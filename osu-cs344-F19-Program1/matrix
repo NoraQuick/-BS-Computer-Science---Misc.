@@ -1,0 +1,369 @@
+#!/bin/bash
+
+################################################################################
+#Information for the TA:
+#I went into a LOT of office hours so...
+#my code has had several itterations. Because of this I left in some examples of
+#different techniques or code I tried. I tried to comment well to explain what
+#everthing does and when there is an "EXAMPLE" in front of a comment it is an
+#example of something I tried that didn't work to show what else I tried.
+#Thank you for grading my code.
+################################################################################
+
+datafilepath="datafile$$"
+if [ "$#" = "0" ]
+then
+	echo "You need to enter a file" 1>&2
+	exit 1
+fi
+if [ "$#" = "1" ]
+then
+	cat > "$datafilepath"
+elif [ "$#" = "2" ] 
+then
+	datafilepath=$2
+elif [ "$#" = "3" ]
+then
+	datafiletwo=$3
+	datafileone=$2
+else
+	echo "You don't have the right number of command line arguments" 1>&2
+	exit 1
+fi
+
+
+
+dims(){
+	#This says that it cannot run with more than one matrix and cannot run
+	#with a nonexistant file
+	if [ "$#" -ne "1" ]
+	then
+		echo "You cannot input more than one" 1>&2
+		exit 1
+	fi
+	if [ ! -f "$1" ]
+	then
+		echo "This is not a file" 1>&2
+		exit 1
+	fi
+
+	#This finds the number of rows
+	#The first line finds the number of lines (wc -l = word count -lines)
+	#and the second line cuts the end space and filename off the printed
+	#statement
+	Rows=$(wc -l $datafilepath) 
+	Rows=${Rows%" $datafilepath"}
+
+	#This finds the number of columns
+	#The second line reads only the first line from the file, the third line
+	#tried to echo out but becuase it can't will put it in stdout and then
+	#directed to sampMat, line four counts the number of words in the line
+	#(wc -w = word count -words), and line four cuts the end space and
+	#filename off the printed statement
+	tempMat="sampleMatrix$$"
+	read -r singleLine < $datafilepath
+	echo $singleLine > $tempMat
+	Cols=$(wc -w $tempMat)
+	Cols=${Cols%" $tempMat"}
+
+	#This prints out the number of rows and columns with a space inbetween
+	echo "$Rows $Cols"
+
+	#This removes the temorary files created to store and move data
+	rm -f datafile*
+	rm -f $sampleMatrix
+	rm -f $tempMat
+}
+
+
+
+transpose() {
+	#This makes a counter for the later for loop to tell the cut to cut at
+	#a certain index
+	transCount=1
+
+	#This gets the a single (the first line) of the matrix and stores it in
+	#a temporary variable
+	transFirstLine=$(head -n1 $1)
+
+	#This loops through for the number of numbers in the first line
+	for i in $transFirstLine
+	do
+		#This cuts the column and and pastes it as a row. (This is
+		#automatically done with the cut). After that it pushes the
+		#count up one so that it knows to cut the following column the
+		#next time. It knows what column is next because the cut saves
+		#the rest of the columns so it knows what's next
+		cut -f${transCount} "$1" | paste -s
+		
+		transCount=$((transCount+1))
+	done
+}
+
+
+
+mean(){
+	#NOTE: &/dev/null tells the thing to go into a trash place
+
+	#This sends the matrix into my transpose function to be transposed and
+	#then saved into a file in this function
+	meanTransCols="tempTransposed$$"
+	transpose $1 > $meanTransCols
+	transCount=$meanTransCols
+
+	#This sends the matrix into my dims function to be find the dimentions
+	#of this matrix and then save the dims into this function
+	dims $1 > /dev/null
+	meanRows=$Rows
+	meanCols=$Cols
+
+	#The following three lines initialize variables I want to use later
+	meanTempFile="tempWhatever$$"
+
+	meanCount=1
+
+	meanIfState=$(($meanRows-1))
+
+	#This reads the file in an array
+	while read -a line
+	do
+		#This resets the sum for every time it itterates through the
+		#while loop
+		meanSum=0
+
+	#EXAMPLE: for (( i=0; i<=$meanOneCols; i++ ))
+	for (( i = 0; i < $meanRows; i++ )) 
+	do
+		#This add ups the numbers being added for every loop through the
+		#for loop
+		meanSum=$(( $meanSum + ${line[$i]} ))
+	done
+		#This is the rounding code given to us in the hints that rounds
+		#the answer properly to the correct mean using out sum added up
+		#in the for loop and the number of rows in the matrix. After it
+		#rounds it appends the mean to a file
+		meanTempVar=$(( ($meanSum + ($meanRows/2)*(($meanSum>0)*2-1)) / $meanRows ))
+		printf -- "$meanTempVar" >> $meanTempFile
+
+		#This says that if the counter is less than the number of
+		#columns add a tab. This makes sure the last number doesn't have
+		#a tab at the end
+		if [[ $meanCount -lt $meanCols ]]
+		then
+			printf "\t" >> $meanTempFile
+		fi
+
+		#This itterates the counter higher for the if statement above
+		meanCount=$(($meanCount+1))
+
+	done < $meanTransCols
+
+	#The following two things are how I was trying to get rid of the tab at
+	#the end before I did the if statement
+	#EXAMPLE:meanTempFile=${meanTempFile%?}
+	#EXAMPLE:meanTempFile=${meanTempFile%?}
+	
+	#This cats out the final appended row of means
+	cat "$meanTempFile"
+
+	#This makes sure a weird random thing isn't printed at the end
+	echo $outputvar
+
+	#This removes all the temporary files made
+	rm -f "$meanTempFile"
+	rm -f tempTransposed*
+	rm -f tempWhatever*
+}
+
+
+
+add(){
+	#This is a different way I get dims. The following code gets the dims of
+	#both matrix
+	addOneRows=$(wc -l $datafileone)
+	addOneRows=${addOneRows%" $datafileone"}
+	
+	addTempMat="addMat$$"
+	read -r addSingleLine < $datafileone
+	echo $addSingleLine > $addTempMat
+	addOneCols=$(wc -w $addTempMat)
+	addOneCols=${addOneCols%" $addTempMat"}
+
+	addTwoRows=$(wc -l $datafiletwo)
+	addTwoRows=${addTwoRows%" $datafiletwo"}
+
+	addTempMAT="addMAT$$"
+	read -r addSingLine < $datafiletwo
+	echo $addSingLine > $addTempMAT
+	addTwoCols=$(wc -w $addTempMAT)
+	addTwoCols=${addTwoCols%" $addTempMAT"}
+
+	#This checks to make sure that the dimentions of the two matricies are
+	#the same
+	if [[ $addOneRows != $addTwoRows ]]
+	then
+		echo "They aren't the same dimentions" 1>&2
+		exit 1
+	fi
+	if [[ $addOneCols != $addTwoCols ]]
+	then
+		echo "They aren't the same dimentions" 1>&2
+		exit 1
+	fi
+
+	ColsMinOne=$(($addTwoCols-1))
+
+	#This is some code I was thinking about for the loops I would use
+	#EXAMPLE: while read file do for elem in $file do
+	#EXAMPLE: for (( i = 1 ; i <= $addOneRows ; i++ ))
+	#EXAMPLE: while read -u 3 addRows && read -u 4 addCols
+
+	#This is the code from piazza that reads through two files at once
+	while read -ra  addLeft <&3 && read -ra  addRight <&4
+	do
+		for (( j = 0; j < $addOneCols; j++ ));
+		do
+			#This is some example code of how I was trying to store
+			#the number at each index
+			#EXAMPLE: aOne=($addLeft[$j])
+			#EXAMPLE: aTwo=($addRight[$j])
+			
+			if [[ $j = $ColsMinOne ]]
+			then
+				printf "%d\n" $((addLeft[$j]+addRight[$j]))
+			else
+				printf "%d\t" $((addLeft[$j]+addRight[$j]))
+			fi
+
+			#This is more example code of how I wanted to cut out
+			#the number at each index and storing it in a variable
+			#EXAMPLE: addRowOne=$(echo $addRows | cut -f $j)
+			#EXAMPLE: addRowTwo=$(echo $addCols | cut -f $j)
+			#EXAMPLE: echo "add row one: $addRowOne"
+			#EXAMPLE: echo "add row two: $addRowTwo"
+		done
+	done 3<"$datafileone" 4<"$datafiletwo"
+
+	#This removes all the temporary files made
+	rm -f addM*
+}
+
+
+
+multiply(){
+	#This gets the dimentions for the two matricies
+	mulOneRows=$(wc -l $datafileone)
+	mulOneRows=${mulOneRows%" $datafileone"}
+
+	mulTempMat="samMat$$"
+	read -r mulSingleLine < $datafileone
+	echo $mulSingleLine > $mulTempMat
+	mulOneCols=$(wc -w $mulTempMat)
+	mulOneCols=${mulOneCols%" $mulTempMat"}
+
+	mulTwoRows=$(wc -l $datafiletwo)
+	mulTwoRows=${mulTwoRows%" $datafiletwo"}
+
+	mulTempMAT="SAMMAT$$"
+	read -r mulSingLine < $datafiletwo
+	echo $mulSingLine > $mulTempMAT
+	mulTwoCols=$(wc -w $mulTempMAT)
+	mulTwoCols=${mulTwoCols%" $mulTempMAT"}
+
+
+	#This checks to make sure the N in M*N N*P are the same and if they're
+	#not it throws an error
+	if [ $mulOneCols -ne $mulTwoRows ]
+	then
+		echo "They don't have the same N in MxN NxP" 1>&2
+		return 1
+	fi
+
+	#This transposes the second matrix to make it easier to work with in
+	#relation to the first matrix
+	multTransCols="multTempTransposed$$"
+	transpose $datafiletwo > $multTransCols
+	multCount=$multTransCols
+
+	#This initializes a count for the if statement
+	multCounter=0
+
+	#This is a double while loop that reads in the two different matricies,
+	#makes them arrays, and reads through them
+	while read -a multVarOne
+	do
+		while read -a multVarTwo
+		do
+			#This loops through each column
+			for (( m = 0; m < $mulOneCols; m++ ))
+			do
+				#This multiplis the two matricies at each index
+				#together and then adds that product to the sum
+				#for each column
+				multMult=$((multVarOne[$m]*multVarTwo[$m]))
+				multSum=$(($multSum+$multMult))
+			done
+
+			#This incriments the counter up by one for the if
+			#statement
+			multCounter=$((multCounter+1))
+
+			#This checks to see if the number of columns is equal to
+			#the count. If it is it will give a newline because
+			#instead of a tab and go to the next. If it's not the
+			#same then it gives a tab for formating purposes
+			if [[ $multCounter == $mulTwoCols ]]
+			then
+				printf "%d\n" $(($multSum))
+				multCounter=0
+			else
+				printf "%d\t" $(($multSum))
+			fi
+
+			#This restarts the sum so that the next section of
+			#multiply isn't being added to the first
+			multSum=0
+
+		done < $multTransCols
+	done < $datafileone
+
+	#This removes all temporary files made
+	rm -f multTempTransposed*
+	rm -f samMat*
+	rm -f SAMMAT*
+}
+
+#This makes sure that if an individual function is called it will be be called
+#and passed in the proper information if none of the inputed files are correct
+#then it will throw an error
+if [ $1 = dims ]
+then
+	if [ $# -ge 3 ]
+	then
+		echo "$#"
+		echo "You cannot have more than one file" 1>&2
+		exit 1
+	fi
+
+	dims $datafilepath
+
+elif [ $1 = transpose ]
+then
+	transpose $datafilepath
+
+elif [ $1 = mean ]
+then
+#cat $datafilepath
+	mean $datafilepath
+
+elif [ $1 = add ]
+then
+	add $datafilepath
+
+elif [ $1 = multiply ]
+then
+	multiply $datafilepath
+else
+	echo "Sorry. You have to be valid." 1>&2
+	exit 1
+fi
